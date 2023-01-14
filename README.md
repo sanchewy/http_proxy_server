@@ -1,5 +1,5 @@
 # http_proxy_server
-CSCI 848 Assignment 1
+NDSU CSCI 848 Assignment 1
 
 Eclipse, Java, gradlew project. 
 
