@@ -9,7 +9,10 @@
 plugins {
     // Apply the java-library plugin for API and implementation separation.
     id 'java-library'
+    id 'application'
 }
+
+apply plugin : 'java'
 
 repositories {
     // Use Maven Central for resolving dependencies.
@@ -30,4 +33,13 @@ dependencies {
 tasks.named('test') {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
+}
+
+apply plugin : "java" 
+ext {
+   javaMainClass = "http_proxy_server.Main"
+}
+
+application {
+    mainClassName = javaMainClass
 }
