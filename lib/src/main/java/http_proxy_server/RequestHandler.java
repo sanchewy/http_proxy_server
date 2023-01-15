@@ -11,27 +11,15 @@ import java.security.SecureRandom;
 // RequestHandler is thread that process requests of one client connection
 public class RequestHandler extends Thread {
 
-	
 	Socket clientSocket;
-
 	InputStream inFromClient;
-
 	OutputStream outToClient;
-	
 	byte[] request = new byte[1024];
-
-	
 	private ProxyServer server;
 
-
 	public RequestHandler(Socket clientSocket, ProxyServer proxyServer) {
-
-		
 		this.clientSocket = clientSocket;
-		
-
 		this.server = proxyServer;
-
 		try {
 			clientSocket.setSoTimeout(2000);
 			inFromClient = clientSocket.getInputStream();
@@ -45,9 +33,7 @@ public class RequestHandler extends Thread {
 
 	
 	@Override
-	
 	public void run() {
-
 		/**
 			 * To do
 			 * Process the requests from a client. In particular, 
@@ -57,7 +43,6 @@ public class RequestHandler extends Thread {
 			 * (4) Otherwise, call method proxyServertoClient to process the GET request
 			 *
 		*/
-
 	}
 
 	
@@ -90,27 +75,19 @@ public class RequestHandler extends Thread {
 	
 	// Sends the cached content stored in the cache file to the client
 	private void sendCachedInfoToClient(String fileName) {
-
 		try {
-
 			byte[] bytes = Files.readAllBytes(Paths.get(fileName));
-
 			outToClient.write(bytes);
 			outToClient.flush();
-
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
 		try {
-
 			if (clientSocket != null) {
 				clientSocket.close();
 			}
-
 		} catch (Exception e) {
 			e.printStackTrace();
-
 		}
 	}
 	
@@ -127,5 +104,4 @@ public class RequestHandler extends Thread {
 		}
 		return sb.toString();
 	}
-
 }
