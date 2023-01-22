@@ -17,7 +17,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.log4j.BasicConfigurator;
-import org.apache.logging.log4j.core.config.Configurator;
 
 
 
