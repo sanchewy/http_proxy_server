@@ -2,12 +2,9 @@ package http_proxy_server;
 
 import java.io.*;
 import java.net.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.SecureRandom;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.log4j.Logger;
@@ -46,6 +43,7 @@ public class RequestHandler extends Thread {
 		 *
 		*/
 		try {
+			clientSocket.getRemoteSocketAddress();
 			BufferedReader socketReader = new BufferedReader(new InputStreamReader(inFromClient));
 			String fullInput = "";
 			String inputLine;
@@ -53,7 +51,8 @@ public class RequestHandler extends Thread {
 		    	fullInput += inputLine + " ";
 		    }
 			String requestNoHeaders = reformatRequest(fullInput);
-			logger.debug(String.format("Reformated request '%s'", requestNoHeaders));
+			server.writeLog(String.format("%s %s", clientSocket.getRemoteSocketAddress(), hostAndResource(requestNoHeaders)));
+			logger.debug(String.format("Reformated request '%s'", removeHostLeaveResource(fullInput)));
 			if (fullInput.startsWith("GET")) {
 				String cachedFileName;
 				if ((cachedFileName = server.getCache(requestNoHeaders)) != null) {
@@ -165,6 +164,13 @@ public class RequestHandler extends Thread {
 	
 	private String removeHostLeaveResource(String request) {
 		return request.replaceAll("http:\\/\\/[^\\/]+", "");
+	}
+	
+	private String hostAndResource(String request) {
+		String regex = "^GET http:\\/\\/(.*) HTTP\\/1\\.1.*$";
+		Matcher m = Pattern.compile(regex).matcher(request);
+		m.find();
+		return m.group(1);
 	}
 	
 	// Sends the cached content stored in the cache file to the client

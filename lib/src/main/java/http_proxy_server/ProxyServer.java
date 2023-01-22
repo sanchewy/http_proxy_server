@@ -1,16 +1,11 @@
 package http_proxy_server;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
@@ -78,13 +73,19 @@ public class ProxyServer {
 	}
 
 	public synchronized void writeLog(String info) {
-		
-			/**
-			 * To do
-			 * write string (info) to the log file, and add the current time stamp 
-			 * e.g. String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
-			 *
-			*/
+		/**
+		 * To do
+		 * write string (info) to the log file, and add the current time stamp 
+		 * e.g. String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
+		 *
+		*/
+		String timeStamp = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
+		try(PrintWriter writer = new PrintWriter(new FileWriter(logFileName, true))) {
+			writer.append(String.format("%s %s\r\n", timeStamp, info));
+			writer.flush();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 }

@@ -80,4 +80,13 @@ public class LibraryTest {
             }
         }
     }
+    
+    @Test
+    public void urlExtract() {
+    	String request = "GET http://google.com/resource/ HTTP/1.1";
+		String regex = "^GET http:\\/\\/(.*) HTTP\\/1\\.1.*$";
+		Matcher m = Pattern.compile(regex).matcher(request);
+		m.find();
+		System.out.println(m.group(1));
+    }
 }
