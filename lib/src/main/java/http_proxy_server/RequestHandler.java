@@ -93,27 +93,18 @@ public class RequestHandler extends Thread {
 		*/
 		
 		try {
-			String host = extractHost(clientRequest);
+			URL url = new URL(extractUrl(clientRequest));
 			int port = 80;
-			logger.debug(String.format("Creating socket with host: '%s' and port: '%d'", host, port));
-//			toWebServerSocket = new Socket(host, port);
-			toWebServerSocket = new Socket("www.neverssl.com", 80);
+			logger.debug(String.format("Creating socket with host: '%s' and port: '%d'", url.getHost(), port));
+			toWebServerSocket = new Socket(url.getHost(), port);
 			outToServer = toWebServerSocket.getOutputStream();
 			inFromServer = toWebServerSocket.getInputStream();
 			PrintWriter out = new PrintWriter(outToServer, true);
 			BufferedReader in = new BufferedReader(new InputStreamReader(inFromServer));
 			clientRequest = removeHostLeaveResource(clientRequest);
 			logger.debug(String.format("Sending request to external webserver: '%s'", clientRequest));
-//			out.println(clientRequest);
-//			out.println("GET /java-core HTTP/1.1");
-//			out.println("Host: www.codejava.net");
-//			out.println("User-Agent: Simple Http Client");
-//			out.println("Accept: text/html");
-//			out.println("Accept-Language: en-US");
-//			out.println("Connection: close");
-//			out.println();
-			out.print("GET /online/ HTTP/1.1\r\n");
-			out.print("Host: www.neverssl.com\r\n");
+			out.print(clientRequest + "\r\n");
+			out.print("Host: " + url.getHost() +  "\r\n");
 			out.print("User-Agent: Simple Http Client\r\n");
 			out.print("Accept: text/html\r\n");
 			out.print("Accept-Language: en-US\r\n");
@@ -144,7 +135,7 @@ public class RequestHandler extends Thread {
 		return m.group(1);
 	}
 	
-	private String extractHost(String request) {
+	private String extractUrl(String request) {
 		String regex = "^GET (http:\\/\\/[^\\/]+)\\/.*$";
 		Matcher m = Pattern.compile(regex).matcher(request);
 		m.find();
