@@ -2,6 +2,7 @@ plugins {
     // Apply the java-library plugin for API and implementation separation.
     id 'java-library'
     id 'application'
+    id 'eclipse'
 }
 
 repositories {
@@ -18,6 +19,11 @@ dependencies {
 
     // This dependency is used internally, and not exposed to consumers on their own compile classpath.
     implementation 'com.google.guava:guava:30.1.1-jre'
+    
+    implementation 'log4j:log4j:1.2.17'
+    
+    // https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core
+	implementation 'org.apache.logging.log4j:log4j-core:2.19.0'
 }
 
 tasks.named('test') {
@@ -26,6 +32,10 @@ tasks.named('test') {
 }
 
 tasks.named('run') {
+	args = ["80"]
+}
+
+tasks.withType(JavaExec) {
 	args = ["80"]
 }
 

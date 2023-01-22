@@ -3,12 +3,80 @@
  */
 package http_proxy_server;
 
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
-class LibraryTest {
-    @Test void someLibraryMethodReturnsTrue() {
-        Library classUnderTest = new Library();
-        assertTrue(classUnderTest.someLibraryMethod(), "someLibraryMethod should return 'true'");
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.net.MalformedURLException;
+import java.net.Socket;
+import java.net.URL;
+import java.net.UnknownHostException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.junit.jupiter.api.Test;
+
+public class LibraryTest {
+	
+    @Test 
+    public void matchTest() {
+		String regex = "^(.*HTTP\\/1\\.1).*$";
+		Matcher match = Pattern.compile(regex).matcher("GET http://google.com/ HTTP/1.1Host: google.comUser-Agent: curl/7.84.0Accept: */*Proxy-Connection: Keep-Alive");
+		match.find();
+		System.out.println(match.group(1));
+		assertNotNull(match.group(1));
+    }
+    
+    @Test
+    public void replaceTest() {
+    	String request = "GET http://google.com/ HTTP/1.1";
+    	String regex = ".*(http:\\/\\/[^\\/]+).*";
+		Matcher match = Pattern.compile(regex).matcher(request);
+		match.find();
+		System.out.println(match.group(1));
+		assertNotNull(match.group(1));
+    	System.out.println(request.replaceAll("http:\\/\\/[^\\/]+", ""));
+    }
+    
+    @Test
+    public void urlTest() throws MalformedURLException {
+    	String s = "http://www.codejava.net/java-core";
+    	URL url = new URL(s);
+    	System.out.println(url.getHost());
+    	System.out.println(url.getPath());
+    }
+    
+    @Test
+    public void httpTest() throws MalformedURLException, IOException {
+    	String s = "http://www.neverssl.com/online/";
+    	URL url = new URL(s);
+    	
+    	try (Socket socket = new Socket(url.getHost(), 80)) {
+    		 
+            OutputStream output = socket.getOutputStream();
+            PrintWriter writer = new PrintWriter(output, true);
+ 
+            writer.print("GET /online/ HTTP/1.1\r\n");
+            writer.print("Host: www.neverssl.com\r\n");
+            writer.print("User-Agent: Simple Http Client\r\n");
+            writer.print("Accept: text/html\r\n");
+			writer.print("Accept-Language: en-US\r\n");
+			writer.print("Connection: close\r\n");
+			writer.print("\r\n");
+			writer.flush();
+ 
+            InputStream input = socket.getInputStream();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(input));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+            }
+        }
     }
 }

@@ -6,6 +6,11 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
 
 // RequestHandler is thread that process requests of one client connection
@@ -16,6 +21,7 @@ public class RequestHandler extends Thread {
 	OutputStream outToClient;
 	byte[] request = new byte[1024];
 	private ProxyServer server;
+	private static Logger logger = Logger.getLogger(RequestHandler.class);
 
 	public RequestHandler(Socket clientSocket, ProxyServer proxyServer) {
 		this.clientSocket = clientSocket;
@@ -24,29 +30,40 @@ public class RequestHandler extends Thread {
 			clientSocket.setSoTimeout(2000);
 			inFromClient = clientSocket.getInputStream();
 			outToClient = clientSocket.getOutputStream();
-
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
 	}
 
 	
 	@Override
 	public void run() {
 		/**
-			 * To do
-			 * Process the requests from a client. In particular, 
-			 * (1) Check the request type, only process GET request and ignore others
-                         * (2) Write log.
-			 * (3) If the url of GET request has been cached, respond with cached content
-			 * (4) Otherwise, call method proxyServertoClient to process the GET request
-			 *
+		 * To do
+		 * Process the requests from a client. In particular, 
+		 * (1) Check the request type, only process GET request and ignore others
+		 * (2) Write log.
+		 * (3) If the url of GET request has been cached, respond with cached content
+		 * (4) Otherwise, call method proxyServertoClient to process the GET request
+		 *
 		*/
+		try {
+			BufferedReader socketReader = new BufferedReader(new InputStreamReader(inFromClient));
+			String fullInput = "";
+			String inputLine;
+			while (!(inputLine = socketReader.readLine()).equals("")) {
+		    	fullInput += inputLine;
+		    }
+			logger.debug(String.format("Read client request: '%s'", fullInput));
+			logger.debug(String.format("Reformated request '%s'", reformatRequest(fullInput)));
+		    proxyServertoClient(reformatRequest(fullInput));
+		} catch (IOException e) {
+			logger.error(e);
+		}
 	}
 
 	
-	private void proxyServertoClient(byte[] clientRequest) {
+	private void proxyServertoClient(String clientRequest) {
 
 		FileOutputStream fileWriter = null;
 		Socket toWebServerSocket = null;
@@ -55,10 +72,16 @@ public class RequestHandler extends Thread {
 		
 		// Create Buffered output stream to write to cached copy of file
 		String fileName = "cached/" + generateRandomFileName() + ".dat";
+		BufferedOutputStream bout;
+		try {
+			fileWriter = new FileOutputStream(fileName);
+			bout = new BufferedOutputStream(fileWriter);
+		} catch (FileNotFoundException e) {
+			logger.error(e);
+		}
 		
 		// to handle binary content, byte is used
 		byte[] serverReply = new byte[4096];
-		
 			
 		/**
 		 * To do
@@ -69,9 +92,68 @@ public class RequestHandler extends Thread {
 		 * (5) close file, and sockets.
 		*/
 		
+		try {
+			String host = extractHost(clientRequest);
+			int port = 80;
+			logger.debug(String.format("Creating socket with host: '%s' and port: '%d'", host, port));
+//			toWebServerSocket = new Socket(host, port);
+			toWebServerSocket = new Socket("www.neverssl.com", 80);
+			outToServer = toWebServerSocket.getOutputStream();
+			inFromServer = toWebServerSocket.getInputStream();
+			PrintWriter out = new PrintWriter(outToServer, true);
+			BufferedReader in = new BufferedReader(new InputStreamReader(inFromServer));
+			clientRequest = removeHostLeaveResource(clientRequest);
+			logger.debug(String.format("Sending request to external webserver: '%s'", clientRequest));
+//			out.println(clientRequest);
+//			out.println("GET /java-core HTTP/1.1");
+//			out.println("Host: www.codejava.net");
+//			out.println("User-Agent: Simple Http Client");
+//			out.println("Accept: text/html");
+//			out.println("Accept-Language: en-US");
+//			out.println("Connection: close");
+//			out.println();
+			out.print("GET /online/ HTTP/1.1\r\n");
+			out.print("Host: www.neverssl.com\r\n");
+			out.print("User-Agent: Simple Http Client\r\n");
+			out.print("Accept: text/html\r\n");
+			out.print("Accept-Language: en-US\r\n");
+			out.print("Connection: close\r\n");
+			out.print("\r\n");
+			out.flush();
+			String fullInput = "";
+			String inputLine;
+			while(inFromServer.available() == 0) {
+				Thread.sleep(100);
+				logger.debug("Sleeping");
+			}
+			while (!(inputLine = in.readLine()).equals("")) {
+				logger.debug(String.format("ResponseLine: '%s'", inputLine));
+		    	fullInput += inputLine;
+		    }
+			logger.debug(String.format("Read server response: '%s'", fullInput));
+		} catch (IOException | InterruptedException e) {
+			logger.error(e);
+		}
+		
 	}
 	
+	private String reformatRequest(String request) {
+		String regex = "^(.*HTTP\\/1\\.1).*$";
+		Matcher m = Pattern.compile(regex).matcher(request);
+		m.find();
+		return m.group(1);
+	}
 	
+	private String extractHost(String request) {
+		String regex = "^GET (http:\\/\\/[^\\/]+)\\/.*$";
+		Matcher m = Pattern.compile(regex).matcher(request);
+		m.find();
+		return m.group(1);
+	}
+	
+	private String removeHostLeaveResource(String request) {
+		return request.replaceAll("http:\\/\\/[^\\/]+", "");
+	}
 	
 	// Sends the cached content stored in the cache file to the client
 	private void sendCachedInfoToClient(String fileName) {

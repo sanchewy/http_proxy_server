@@ -1,9 +1,11 @@
 package http_proxy_server;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
@@ -13,6 +15,9 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.apache.log4j.BasicConfigurator;
+import org.apache.logging.log4j.core.config.Configurator;
 
 
 
@@ -26,13 +31,14 @@ public class ProxyServer {
 	String logFileName = "log.txt";
 
 	public static void main(String[] args) {
-		new ProxyServer().startServer(Integer.parseInt(args[0]));
+		int port = Integer.parseInt(args[0]);
+		BasicConfigurator.configure();
+		System.out.println("Starting server at localhost:" + port);
+		new ProxyServer().startServer(port);
 	}
 
 	void startServer(int proxyPort) {
-
 		cache = new ConcurrentHashMap<>();
-
 		// create the directory to store cached files. 
 		File cacheDir = new File("cached");
 		if (!cacheDir.exists() || (cacheDir.exists() && !cacheDir.isDirectory())) {
@@ -40,14 +46,27 @@ public class ProxyServer {
 		}
 
 		/**
-			 * To do:
+			 * TODO:
 			 * create a serverSocket to listen on the port (proxyPort)
 			 * Create a thread (RequestHandler) for each new client connection 
 			 * remember to catch Exceptions!
 			 *
 		*/
- 
 		
+		/** TODO: Multithreading for handling multiple connections
+		 * while (true) {
+		 *      accept a connection;
+		 *	    create a thread to deal with the client;
+		 *	}
+		 */
+		
+		try (Socket socket = new ServerSocket(proxyPort).accept()) {
+			RequestHandler handler = new RequestHandler(socket, this);
+			handler.start();
+			handler.join();
+		} catch (IOException | InterruptedException e) {
+			e.printStackTrace();
+		}		
 	}
 
 
