@@ -50,6 +50,7 @@ public class LibraryTest {
     	URL url = new URL(s);
     	System.out.println(url.getHost());
     	System.out.println(url.getPath());
+    	System.out.println(url.getHost() + url.getPath());
     }
     
     @Test

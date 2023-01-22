@@ -25,9 +25,7 @@ public class ProxyServer {
 
 	//cache is a Map: the key is the URL and the value is the file name of the file that stores the cached content
 	Map<String, String> cache;
-	
 	ServerSocket proxySocket;
-
 	String logFileName = "log.txt";
 
 	public static void main(String[] args) {
@@ -59,17 +57,18 @@ public class ProxyServer {
 		 *	    create a thread to deal with the client;
 		 *	}
 		 */
-		
-		try (Socket socket = new ServerSocket(proxyPort).accept()) {
-			RequestHandler handler = new RequestHandler(socket, this);
-			handler.start();
-			handler.join();
+		try (ServerSocket serverSocket = new ServerSocket(proxyPort)) {
+			while (true) {
+				try (Socket socket = serverSocket.accept()) {
+					RequestHandler handler = new RequestHandler(socket, this);
+					handler.start();
+					handler.join();
+				}	
+			}
 		} catch (IOException | InterruptedException e) {
 			e.printStackTrace();
-		}		
+		}
 	}
-
-
 
 	public String getCache(String hashcode) {
 		return cache.get(hashcode);

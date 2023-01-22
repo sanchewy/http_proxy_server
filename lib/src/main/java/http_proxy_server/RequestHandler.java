@@ -2,18 +2,15 @@ package http_proxy_server;
 
 import java.io.*;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-
 
 // RequestHandler is thread that process requests of one client connection
 public class RequestHandler extends Thread {
@@ -23,7 +20,6 @@ public class RequestHandler extends Thread {
 	OutputStream outToClient;
 	byte[] request = new byte[1024];
 	private ProxyServer server;
-	private Map<String, String> cacheMap = new HashMap<String, String>();
 	private static Logger logger = Logger.getLogger(RequestHandler.class);
 
 	public RequestHandler(Socket clientSocket, ProxyServer proxyServer) {
@@ -37,7 +33,6 @@ public class RequestHandler extends Thread {
 			e.printStackTrace();
 		}
 	}
-
 	
 	@Override
 	public void run() {
@@ -54,15 +49,16 @@ public class RequestHandler extends Thread {
 			BufferedReader socketReader = new BufferedReader(new InputStreamReader(inFromClient));
 			String fullInput = "";
 			String inputLine;
-			while (!(inputLine = socketReader.readLine()).equals("")) {
+			while (!(inputLine = socketReader.readLine()).equals("")) { // Curl request end with blank string not null
 		    	fullInput += inputLine + " ";
 		    }
 			String requestNoHeaders = reformatRequest(fullInput);
 			logger.debug(String.format("Reformated request '%s'", requestNoHeaders));
 			if (fullInput.startsWith("GET")) {
-				if (cacheMap.containsKey(requestNoHeaders)) {
+				String cachedFileName;
+				if ((cachedFileName = server.getCache(requestNoHeaders)) != null) {
 					logger.debug("Returning cached response from previous identical response!");
-					sendCachedInfoToClient(cacheMap.get(requestNoHeaders));
+					sendCachedInfoToClient(cachedFileName);
 				} else {
 					proxyServertoClient(requestNoHeaders);
 				}
@@ -115,9 +111,9 @@ public class RequestHandler extends Thread {
 			BufferedReader serverReader = new BufferedReader(new InputStreamReader(inFromServer));
 			
 			// Format request and send to server, printf auto-flushes, \r\n for mac newline to work with http
-			clientRequest = removeHostLeaveResource(clientRequest);
-			logger.debug(String.format("Sending request to external webserver: '%s'", clientRequest));
-			serverWriter.printf("%s\r\n", clientRequest);
+			String methodResourceHttp = removeHostLeaveResource(clientRequest);
+			logger.debug(String.format("Sending request to external webserver: '%s'", methodResourceHttp));
+			serverWriter.printf("%s\r\n", methodResourceHttp);
 			serverWriter.printf("Host: %s\r\n", url.getHost());
 			serverWriter.printf("\r\n");
 			
@@ -135,13 +131,13 @@ public class RequestHandler extends Thread {
 				logger.debug(String.format("ResponseLine: '%s'", inputLine));
 		    	fullInput += inputLine;
 		    	clientWriter.printf("%s\r\n", inputLine);
-		    	bout.write(inputLine.getBytes());
+		    	bout.write(String.format("%s\r\n", inputLine).getBytes());
 		    }
 			bout.flush();
 			bout.close();
+			server.putCache(clientRequest, fileName);
 			clientWriter.printf("\r\n");
 			logger.debug(String.format("Read server response: '%s'", fullInput));
-			// Write response to cache
 			// Return response to client
 			clientWriter.close();
 			outToClient.close();
@@ -149,7 +145,6 @@ public class RequestHandler extends Thread {
 		} catch (IOException | InterruptedException e) {
 			logger.error(e);
 		}
-		
 	}
 	
 	private String reformatRequest(String request) {
