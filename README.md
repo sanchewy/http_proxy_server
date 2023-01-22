@@ -11,4 +11,6 @@ I'm using jdk17 and gradle 7.6, but you should be able to use whatever jdk/gradl
 `./gradlew run`
 
 ## Request against server
-`curl -x http://localhost:80 http://www.neverssl.com/online/`
+Get request `curl -x http://localhost:80 http://www.neverssl.com/online/`  
+
+Test non-get request `curl -x http://localhost:80 -X POST http://www.neverssl.com/online/`

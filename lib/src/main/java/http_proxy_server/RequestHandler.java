@@ -6,6 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -21,6 +23,7 @@ public class RequestHandler extends Thread {
 	OutputStream outToClient;
 	byte[] request = new byte[1024];
 	private ProxyServer server;
+	private Map<String, String> cacheMap = new HashMap<String, String>();
 	private static Logger logger = Logger.getLogger(RequestHandler.class);
 
 	public RequestHandler(Socket clientSocket, ProxyServer proxyServer) {
@@ -52,27 +55,36 @@ public class RequestHandler extends Thread {
 			String fullInput = "";
 			String inputLine;
 			while (!(inputLine = socketReader.readLine()).equals("")) {
-		    	fullInput += inputLine;
+		    	fullInput += inputLine + " ";
 		    }
-			logger.debug(String.format("Read client request: '%s'", fullInput));
-			logger.debug(String.format("Reformated request '%s'", reformatRequest(fullInput)));
-		    proxyServertoClient(reformatRequest(fullInput));
+			String requestNoHeaders = reformatRequest(fullInput);
+			logger.debug(String.format("Reformated request '%s'", requestNoHeaders));
+			if (fullInput.startsWith("GET")) {
+				if (cacheMap.containsKey(requestNoHeaders)) {
+					logger.debug("Returning cached response from previous identical response!");
+					sendCachedInfoToClient(cacheMap.get(requestNoHeaders));
+				} else {
+					proxyServertoClient(requestNoHeaders);
+				}
+			} else {
+				logger.error("This proxy only supports GET HTTP requests");
+			}
 		} catch (IOException e) {
 			logger.error(e);
 		}
 	}
 
-	
 	private void proxyServertoClient(String clientRequest) {
 
 		FileOutputStream fileWriter = null;
 		Socket toWebServerSocket = null;
 		InputStream inFromServer;
 		OutputStream outToServer;
+		BufferedOutputStream fileBuffOut;
 		
 		// Create Buffered output stream to write to cached copy of file
 		String fileName = "cached/" + generateRandomFileName() + ".dat";
-		BufferedOutputStream bout;
+		BufferedOutputStream bout = null;
 		try {
 			fileWriter = new FileOutputStream(fileName);
 			bout = new BufferedOutputStream(fileWriter);
@@ -123,7 +135,10 @@ public class RequestHandler extends Thread {
 				logger.debug(String.format("ResponseLine: '%s'", inputLine));
 		    	fullInput += inputLine;
 		    	clientWriter.printf("%s\r\n", inputLine);
+		    	bout.write(inputLine.getBytes());
 		    }
+			bout.flush();
+			bout.close();
 			clientWriter.printf("\r\n");
 			logger.debug(String.format("Read server response: '%s'", fullInput));
 			// Write response to cache
