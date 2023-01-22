@@ -101,22 +101,23 @@ public class RequestHandler extends Thread {
 			inFromServer = toWebServerSocket.getInputStream();
 			PrintWriter out = new PrintWriter(outToServer, true);
 			BufferedReader in = new BufferedReader(new InputStreamReader(inFromServer));
+			
+			// Format request and send to server, printf auto-flushes, \r\n for mac newline to work with http
 			clientRequest = removeHostLeaveResource(clientRequest);
 			logger.debug(String.format("Sending request to external webserver: '%s'", clientRequest));
-			out.print(clientRequest + "\r\n");
-			out.print("Host: " + url.getHost() +  "\r\n");
-			out.print("User-Agent: Simple Http Client\r\n");
-			out.print("Accept: text/html\r\n");
-			out.print("Accept-Language: en-US\r\n");
-			out.print("Connection: close\r\n");
-			out.print("\r\n");
-			out.flush();
-			String fullInput = "";
-			String inputLine;
+			out.printf("%s\r\n", clientRequest);
+			out.printf("Host: %s\r\n", url.getHost());
+			out.printf("\r\n");
+			
+			// Sleep waiting for response
 			while(inFromServer.available() == 0) {
 				Thread.sleep(100);
 				logger.debug("Sleeping");
 			}
+			
+			// Process response
+			String fullInput = "";
+			String inputLine;
 			while (!(inputLine = in.readLine()).equals("")) {
 				logger.debug(String.format("ResponseLine: '%s'", inputLine));
 		    	fullInput += inputLine;
