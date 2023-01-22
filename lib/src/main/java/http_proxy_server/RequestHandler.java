@@ -99,15 +99,15 @@ public class RequestHandler extends Thread {
 			toWebServerSocket = new Socket(url.getHost(), port);
 			outToServer = toWebServerSocket.getOutputStream();
 			inFromServer = toWebServerSocket.getInputStream();
-			PrintWriter out = new PrintWriter(outToServer, true);
-			BufferedReader in = new BufferedReader(new InputStreamReader(inFromServer));
+			PrintWriter serverWriter = new PrintWriter(outToServer, true);
+			BufferedReader serverReader = new BufferedReader(new InputStreamReader(inFromServer));
 			
 			// Format request and send to server, printf auto-flushes, \r\n for mac newline to work with http
 			clientRequest = removeHostLeaveResource(clientRequest);
 			logger.debug(String.format("Sending request to external webserver: '%s'", clientRequest));
-			out.printf("%s\r\n", clientRequest);
-			out.printf("Host: %s\r\n", url.getHost());
-			out.printf("\r\n");
+			serverWriter.printf("%s\r\n", clientRequest);
+			serverWriter.printf("Host: %s\r\n", url.getHost());
+			serverWriter.printf("\r\n");
 			
 			// Sleep waiting for response
 			while(inFromServer.available() == 0) {
@@ -118,11 +118,19 @@ public class RequestHandler extends Thread {
 			// Process response
 			String fullInput = "";
 			String inputLine;
-			while (!(inputLine = in.readLine()).equals("")) {
+			PrintWriter clientWriter = new PrintWriter(outToClient, true);
+			while ((inputLine = serverReader.readLine()) != null) {
 				logger.debug(String.format("ResponseLine: '%s'", inputLine));
 		    	fullInput += inputLine;
+		    	clientWriter.printf("%s\r\n", inputLine);
 		    }
+			clientWriter.printf("\r\n");
 			logger.debug(String.format("Read server response: '%s'", fullInput));
+			// Write response to cache
+			// Return response to client
+			clientWriter.close();
+			outToClient.close();
+			clientSocket.close();
 		} catch (IOException | InterruptedException e) {
 			logger.error(e);
 		}
