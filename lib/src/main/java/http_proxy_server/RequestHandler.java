@@ -117,32 +117,34 @@ public class RequestHandler extends Thread {
 			serverWriter.printf("Host: %s\r\n", url.getHost());
 			serverWriter.printf("\r\n");
 			
-			// Sleep waiting for response
-			while(inFromServer.available() == 0) {
-				Thread.sleep(100);
-				logger.debug("Sleeping");
-			}
+//			// Sleep waiting for response (only needed during debugging of incomming connection)
+//			while(inFromServer.available() == 0) {
+//				Thread.sleep(100);
+//				logger.debug("Sleeping");
+//			}
 			
 			// Process response
-			String fullInput = "";
 			String inputLine;
 			PrintWriter clientWriter = new PrintWriter(outToClient, true);
 			while ((inputLine = serverReader.readLine()) != null) {
-				logger.debug(String.format("ResponseLine: '%s'", inputLine));
-		    	fullInput += inputLine;
+//				logger.debug(String.format("ResponseLine: '%s'", inputLine));
 		    	clientWriter.printf("%s\r\n", inputLine);
 		    	bout.write(String.format("%s\r\n", inputLine).getBytes());
 		    }
+			logger.debug("Read server response.");
+			
+			// Add cache map record to file
 			bout.flush();
 			bout.close();
 			server.putCache(clientRequest, fileName);
-			clientWriter.printf("\r\n");
-			logger.debug(String.format("Read server response: '%s'", fullInput));
-			// Return response to client
+			logger.debug("Cached server response.");
+			
+			// Return response to client and close all resources.
+			clientWriter.flush();
 			clientWriter.close();
 			outToClient.close();
 			clientSocket.close();
-		} catch (IOException | InterruptedException e) {
+		} catch (IOException e) {
 			logger.error(e);
 		}
 	}
@@ -171,10 +173,6 @@ public class RequestHandler extends Thread {
 			byte[] bytes = Files.readAllBytes(Paths.get(fileName));
 			outToClient.write(bytes);
 			outToClient.flush();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		try {
 			if (clientSocket != null) {
 				clientSocket.close();
 			}
@@ -183,14 +181,11 @@ public class RequestHandler extends Thread {
 		}
 	}
 	
-	
 	// Generates a random file name  
 	public String generateRandomFileName() {
-
 		String ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
 		SecureRandom RANDOM = new SecureRandom();
 		StringBuilder sb = new StringBuilder();
-
 		for (int i = 0; i < 10; ++i) {
 			sb.append(ALPHABET.charAt(RANDOM.nextInt(ALPHABET.length())));
 		}
