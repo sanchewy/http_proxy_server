@@ -13,18 +13,16 @@ import org.apache.log4j.Logger;
 public class RequestHandler extends Thread {
 
 	Socket clientSocket;
-	InputStream inFromClient;
 	OutputStream outToClient;
 	byte[] request = new byte[1024];
 	private ProxyServer server;
 	private static Logger logger = Logger.getLogger(RequestHandler.class);
+	private static int threadCount = 1; // Used to trigger sleep when demoing multithreading
 
 	public RequestHandler(Socket clientSocket, ProxyServer proxyServer) {
 		this.clientSocket = clientSocket;
 		this.server = proxyServer;
 		try {
-			clientSocket.setSoTimeout(2000);
-			inFromClient = clientSocket.getInputStream();
 			outToClient = clientSocket.getOutputStream();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -33,6 +31,18 @@ public class RequestHandler extends Thread {
 	
 	@Override
 	public void run() {
+//      // Used to trigger sleep when demoing multithreading
+//		threadCount++;
+//		if (threadCount % 2 == 0) {
+//			try {
+//				logger.info("Thread even, delaying thread to demo multithreading: " + threadCount);
+//				Thread.sleep(20000);
+//			} catch (InterruptedException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+//		}
+		
 		/**
 		 * To do
 		 * Process the requests from a client. In particular, 
@@ -42,9 +52,7 @@ public class RequestHandler extends Thread {
 		 * (4) Otherwise, call method proxyServertoClient to process the GET request
 		 *
 		*/
-		try {
-			clientSocket.getRemoteSocketAddress();
-			BufferedReader socketReader = new BufferedReader(new InputStreamReader(inFromClient));
+		try(BufferedReader socketReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
 			String fullInput = "";
 			String inputLine;
 			while (!(inputLine = socketReader.readLine()).equals("")) { // Curl request end with blank string not null
@@ -65,7 +73,7 @@ public class RequestHandler extends Thread {
 				logger.error("This proxy only supports GET HTTP requests");
 			}
 		} catch (IOException e) {
-			logger.error(e);
+			logger.error("Error reading from client request: ", e);
 		}
 	}
 
@@ -75,20 +83,6 @@ public class RequestHandler extends Thread {
 		Socket toWebServerSocket = null;
 		InputStream inFromServer;
 		OutputStream outToServer;
-		BufferedOutputStream fileBuffOut;
-		
-		// Create Buffered output stream to write to cached copy of file
-		String fileName = "cached/" + generateRandomFileName() + ".dat";
-		BufferedOutputStream bout = null;
-		try {
-			fileWriter = new FileOutputStream(fileName);
-			bout = new BufferedOutputStream(fileWriter);
-		} catch (FileNotFoundException e) {
-			logger.error(e);
-		}
-		
-		// to handle binary content, byte is used
-		byte[] serverReply = new byte[4096];
 			
 		/**
 		 * To do
@@ -100,51 +94,57 @@ public class RequestHandler extends Thread {
 		*/
 		
 		try {
-			URL url = new URL(extractUrl(clientRequest));
+			// Create external socket connection to requested host
+			String host = new URL(extractUrl(clientRequest)).getHost();
 			int port = 80;
-			logger.debug(String.format("Creating socket with host: '%s' and port: '%d'", url.getHost(), port));
-			toWebServerSocket = new Socket(url.getHost(), port);
+			logger.debug(String.format("Creating socket with host: '%s' and port: '%d'", host, port));
+			toWebServerSocket = new Socket(host, port);
 			outToServer = toWebServerSocket.getOutputStream();
 			inFromServer = toWebServerSocket.getInputStream();
 			PrintWriter serverWriter = new PrintWriter(outToServer, true);
 			BufferedReader serverReader = new BufferedReader(new InputStreamReader(inFromServer));
 			
-			// Format request and send to server, printf auto-flushes, \r\n for mac newline to work with http
+			// Format request and send to host server, printf auto-flushes, \r\n for mac newline to work with http
 			String methodResourceHttp = removeHostLeaveResource(clientRequest);
 			logger.debug(String.format("Sending request to external webserver: '%s'", methodResourceHttp));
 			serverWriter.printf("%s\r\n", methodResourceHttp);
-			serverWriter.printf("Host: %s\r\n", url.getHost());
+			serverWriter.printf("Host: %s\r\n", host);
 			serverWriter.printf("\r\n");
 			
-//			// Sleep waiting for response (only needed during debugging of incomming connection)
+//			// Sleep waiting for response (only needed during debugging of incoming connection)
 //			while(inFromServer.available() == 0) {
 //				Thread.sleep(100);
 //				logger.debug("Sleeping");
 //			}
 			
-			// Process response
-			String inputLine;
+			// Create client writer and cache writer to copy server response into
 			PrintWriter clientWriter = new PrintWriter(outToClient, true);
+			String cacheFileName = "cached/" + generateRandomFileName() + ".dat";
+			BufferedOutputStream cacheBufferOut = null;
+			try {
+				cacheBufferOut = new BufferedOutputStream(new FileOutputStream(cacheFileName));
+			} catch (FileNotFoundException e) {
+				logger.error("Error creating cache file: ", e);
+			}
+			
+			// Process server response (copy into client writer and cache writer)
+			String inputLine;
 			while ((inputLine = serverReader.readLine()) != null) {
-//				logger.debug(String.format("ResponseLine: '%s'", inputLine));
 		    	clientWriter.printf("%s\r\n", inputLine);
-		    	bout.write(String.format("%s\r\n", inputLine).getBytes());
+		    	cacheBufferOut.write(String.format("%s\r\n", inputLine).getBytes());
 		    }
-			logger.debug("Read server response.");
+			logger.debug("Read in server response.");
 			
 			// Add cache map record to file
-			bout.flush();
-			bout.close();
-			server.putCache(clientRequest, fileName);
+			cacheBufferOut.flush();
+			cacheBufferOut.close();
+			server.putCache(clientRequest, cacheFileName);
 			logger.debug("Cached server response.");
 			
 			// Return response to client and close all resources.
 			clientWriter.flush();
-			clientWriter.close();
-			outToClient.close();
-			clientSocket.close();
 		} catch (IOException e) {
-			logger.error(e);
+			logger.error("Error processing server response: ", e);
 		}
 	}
 	

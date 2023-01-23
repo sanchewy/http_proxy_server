@@ -51,15 +51,16 @@ public class ProxyServer {
 		 *	    create a thread to deal with the client;
 		 *	}
 		 */
-		try (ServerSocket serverSocket = new ServerSocket(proxyPort)) {
+		try {
+//			while (!Thread.currentThread().isInterrupted()) {
+			ServerSocket serverSocket = new ServerSocket(proxyPort);
 			while (true) {
-				try (Socket socket = serverSocket.accept()) {
-					RequestHandler handler = new RequestHandler(socket, this);
-					handler.start();
-					handler.join();
-				}	
+				Socket socket = serverSocket.accept();
+				System.out.println("Socket:" + socket);
+				RequestHandler handler = new RequestHandler(socket, this);
+				handler.start();
 			}
-		} catch (IOException | InterruptedException e) {
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
