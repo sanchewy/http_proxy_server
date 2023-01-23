@@ -44,13 +44,6 @@ public class ProxyServer {
 			 * remember to catch Exceptions!
 			 *
 		*/
-		
-		/** TODO: Multithreading for handling multiple connections
-		 * while (true) {
-		 *      accept a connection;
-		 *	    create a thread to deal with the client;
-		 *	}
-		 */
 		try {
 //			while (!Thread.currentThread().isInterrupted()) {
 			ServerSocket serverSocket = new ServerSocket(proxyPort);
