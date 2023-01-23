@@ -139,7 +139,7 @@ public class RequestHandler extends Thread {
 			cacheBufferOut.flush();
 			cacheBufferOut.close();
 			server.putCache(clientRequest, cacheFileName);
-			logger.debug("Cached server response.");
+			logger.debug("Cached server response in file: " + cacheFileName);
 			
 			// Return response to client and close all resources.
 			clientWriter.flush();
