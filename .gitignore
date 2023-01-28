@@ -3,6 +3,7 @@
 
 # Log file
 *.log
+log.txt
 
 # BlueJ files
 *.ctxt
@@ -30,4 +31,6 @@ hs_err_pid*
 
 # Eclipse
 /build
+lib/build
+lib/cached
 
